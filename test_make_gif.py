@@ -1,17 +1,34 @@
+#!/usr/bin/python3
+
 from PIL import Image
 from sys import argv
-import mini_bitmap_parser
+import logo
 
-SOURCE_FILE = argv[1]
+"""
+	Convert logo.sys file to gif
+	Usage: test_make_gif.py <path/to/logo.sys> [--expand]
+	'--expand' doubles the pixels horizontally.
+"""
 
-source_pil = Image.open(SOURCE_FILE)
-source_bmp = mini_bitmap_parser.BitmapFile(SOURCE_FILE)
+if __name__=="__main__":
 
-animation = []
-for palette in mini_bitmap_parser.ColorTableAnimation(source_bmp):
-	new_im = source_pil.copy()
-	new_im.putpalette([v for rgbpair in palette for v in rgbpair])
-	animation.append(new_im)
+	SOURCE_FILE = argv[1]
+	EXPAND = argv[2] == "--expand"
 
-source_pil.save("logo.gif", save_all=True, append_images=animation,
-	loop=0)
+	source_pil = Image.open(SOURCE_FILE)
+	source_bmp = logo.BitmapFile(SOURCE_FILE)
+
+	if EXPAND:
+		source_pil = source_pil.resize(
+			(source_pil.size[0]*2, source_pil.size[1]),
+			Image.Resampling.NEAREST
+		)
+
+	animation = []
+	for palette in logo.ColorTableAnimation(source_bmp):
+		new_im = source_pil.copy()
+		new_im.putpalette([v for rgbpair in palette for v in rgbpair])
+		animation.append(new_im)
+
+	source_pil.save("logo.gif", save_all=True, append_images=animation,
+		loop=0)
