@@ -1,0 +1,3 @@
+https://gibberlings3.github.io/iesdp/file_formats/ie_formats/bmp.htm
+https://docs.python.org/3/library/struct.html#format-strings
+https://archive.org/download/win95-logo.sys
