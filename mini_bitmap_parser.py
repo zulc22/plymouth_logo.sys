@@ -62,7 +62,7 @@ class BitmapFile:
 		
 		self.color_table = []
 		for _ in itertools.repeat(None, 256):
-			r,g,b = struct.unpack("BBBx", file.read(4))
+			b,g,r = struct.unpack("BBBx", file.read(4))
 			self.color_table.append((r,g,b))
 		
 		# 'important colors' being 0 means that *all* colors are important
@@ -80,14 +80,26 @@ class ColorTableAnimation:
 		the colors marked 'unimportant' at the end of the palette.
 	"""
 
-	def __init__(self, color_table, colors_important):
+	def __init__(self, bitmap):
 		# we do not want to accidentally overwrite the color table
 		# of the BitmapFile object.
-		self.color_table = copy.deepcopy(color_table)
-		self.colors_important = colors_important
+		self.color_table = copy.deepcopy(bitmap.color_table)
+		self.colors_important = bitmap.colors_important
+		self.iterations_until_loop = 256 - bitmap.colors_important
 
 	def __iter__(self): return self
 
 	def __next__(self):
 		if self.colors_important == 256: raise StopIteration
-		raise NotImplementedError # TODO
+		
+		self.iterations_until_loop -= 1
+		if self.iterations_until_loop == 0: raise StopIteration
+		if self.iterations_until_loop == -1: # so the iterator can be reused
+			self.iterations_until_loop = 256 - self.colors_important
+
+		unimportant_colors = self.color_table[self.colors_important:]
+		unimportant_colors.append(unimportant_colors.pop(0))
+		self.color_table = \
+			self.color_table[:self.colors_important] + unimportant_colors
+		
+		return self.color_table
