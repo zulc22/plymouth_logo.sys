@@ -1,6 +1,7 @@
-import os
 import struct
 import io
+import itertools
+import copy
 
 class BitmapFile:
 	"""
@@ -8,7 +9,7 @@ class BitmapFile:
 		in LOGO.SYS files.
 	"""
 
-	def __init__(self, file_or_path, close_fd=False):
+	def __init__(self, file_or_path, close_fd=False, read_image=False):
 		"""
 			Accepts a file descriptor or string.
 		"""
@@ -30,13 +31,13 @@ class BitmapFile:
 			if close_fd: file.close()
 			raise ValueError("Bitmap doesn't start with BM.")
 		
-		self.bm_size, \
-			self.reserved_1, \
-			self.reserved_2, \
-			self.image_offset, \
-			self.dib_size = struct.unpack("<IHHII", file.read(4+2+2+4+4))
+		self._header_size, \
+			self._reserved_1, \
+			self._reserved_2, \
+			self._image_offset, \
+			self._dib_size = struct.unpack("<IHHII", file.read(4+2+2+4+4))
 		
-		if self.dib_size != 40:
+		if self._dib_size != 40:
 			if close_fd: file.close()
 			raise ValueError("Bitmap DIB header isn't 40 bytes long. Not parsing.")
 		
@@ -45,7 +46,7 @@ class BitmapFile:
 			self.planes, \
 			self.bit_depth, \
 			self.compression_type, \
-			self.image_size, \
+			self._image_size, \
 			self.pixels_per_meter_h, \
 			self.pixels_per_meter_v, \
 			self.colors_used, \
@@ -54,3 +55,39 @@ class BitmapFile:
 		if self.bit_depth != 8:
 			if close_fd: file.close()
 			raise ValueError("Bitmap isn't 256 color.")
+		
+		if self.compression_type != 0:
+			if close_fd: file.close()
+			raise ValueError("Bitmap is compressed.")
+		
+		self.color_table = []
+		for _ in itertools.repeat(None, 256):
+			r,g,b = struct.unpack("BBBx", file.read(4))
+			self.color_table.append((r,g,b))
+		
+		# 'important colors' being 0 means that *all* colors are important
+		if self.colors_important == 0: self.colors_important = 256
+		
+		if read_image:
+			file.seek(self._image_offset)
+			self.image_data = file.read(self._image_size)
+
+		if close_fd: file.close()
+
+class ColorTableAnimation:
+	"""
+		Implements the Windows 9x scrolling bar animation by rotating
+		the colors marked 'unimportant' at the end of the palette.
+	"""
+
+	def __init__(self, color_table, colors_important):
+		# we do not want to accidentally overwrite the color table
+		# of the BitmapFile object.
+		self.color_table = copy.deepcopy(color_table)
+		self.colors_important = colors_important
+
+	def __iter__(self): return self
+
+	def __next__(self):
+		if self.colors_important == 256: raise StopIteration
+		raise NotImplementedError # TODO
