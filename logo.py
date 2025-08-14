@@ -13,7 +13,8 @@ class BitmapFile:
 
 	def __init__(self, file_or_path, close_fd=False, read_image=False):
 		"""
-			Accepts a file descriptor or string.
+			Accepts a file descriptor or string, and parses the bitmap file
+			into the object's memory.
 		"""
 
 		file = None
